@@ -1,0 +1,83 @@
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+class TicketBooking {
+    private final int totalSeats;
+    private int availableSeats;
+    private final Lock lock = new ReentrantLock();
+
+    public TicketBooking(int totalSeats) {
+        this.totalSeats = totalSeats;
+        this.availableSeats = totalSeats;
+    }
+
+    public void bookTicket(String customerName) {
+        lock.lock();
+        try {
+            if (availableSeats > 0) {
+                System.out.println(customerName + " booked a seat. Seats left: " + (availableSeats - 1));
+                availableSeats--;
+            } else {
+                System.out.println(customerName + " tried to book a seat, but no seats are available.");
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public int getAvailableSeats() {
+        return availableSeats;
+    }
+}
+
+class BookingThread extends Thread {
+    private final TicketBooking ticketBooking;
+    private final String customerName;
+
+    public BookingThread(TicketBooking ticketBooking, String customerName) {
+        this.ticketBooking = ticketBooking;
+        this.customerName = customerName;
+    }
+
+    @Override
+    public void run() {
+        ticketBooking.bookTicket(customerName);
+    }
+}
+
+public class TicketBookingSystem {
+    public static void main(String[] args) {
+        TicketBooking ticketBooking = new TicketBooking(5); // Total 5 seats
+
+        // Create VIP booking threads with higher priority
+        BookingThread vip1 = new BookingThread(ticketBooking, "VIP Customer 1");
+        BookingThread vip2 = new BookingThread(ticketBooking, "VIP Customer 2");
+        vip1.setPriority(Thread.MAX_PRIORITY);
+        vip2.setPriority(Thread.MAX_PRIORITY);
+
+        // Create regular booking threads with lower priority
+        BookingThread regular1 = new BookingThread(ticketBooking, "Regular Customer 1");
+        BookingThread regular2 = new BookingThread(ticketBooking, "Regular Customer 2");
+        BookingThread regular3 = new BookingThread(ticketBooking, "Regular Customer 3");
+
+        // Start the threads
+        vip1.start();
+        vip2.start();
+        regular1.start();
+        regular2.start();
+        regular3.start();
+
+        // Wait for all threads to finish
+        try {
+            vip1.join();
+            vip2.join();
+            regular1.join();
+            regular2.join();
+            regular3.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Booking process completed. Available seats: " + ticketBooking.getAvailableSeats());
+    }
+}
